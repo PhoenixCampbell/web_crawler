@@ -4,6 +4,7 @@ use log::{error, info};
 use std::time::Instant;
 
 mod crawler;
+
 #[derive(Parser, Debug)]
 #[clap(Author, version, about, long_about=None)]
 struct Args{
@@ -12,6 +13,12 @@ struct Args{
 
     #[clap(short, ong, default_value_t=2)]
     depth: u32,
+
+    #[clap(short, long, multiple = true)]
+    allowed_domains: Option<Vec<String>>,
+
+    #[clap(short, long, multiple = true)]
+    keywords: Vec<String>,
 }
 error_chain!{
     foreign_links{
@@ -27,13 +34,21 @@ async fn main()->Result<()> {
     info!("Crawling {} at depth {}...", &args.url, args.depth);
 
     let start = Instant::now();
-    match crawler::crawl(&args.url, args.depth).await {
-        Ok(links) => {
-            info!("Crawled {} links in {} seconds.", links.len(), start.elapsed().as_secs_f64());
+    match crawler::crawl(&args.url, args.depth, args.allowed_domains, args.keywords).await {
+        Ok(results) => {
+            info!("Crawling completed successfully");
+            info!("Total pages crawled: {}", results.len());
+            for (url, score) in results.iter().take(10) {
+                println!("URL: {}, Score: {}", url, score);
+            }
         }
         Err(e) => {
-            error!("Error crawling: {}", e);
+            error!("Error during crawling: {}", e);
         }
     }
+
+    let duration = start_time.elapsed();
+    info!("Crawling took {:?}", duration);
+
     Ok(())
 }
